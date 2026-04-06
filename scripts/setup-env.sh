@@ -63,7 +63,7 @@ main() {
   fi
 
   backup_root="$(ask "BACKUP_ROOT" "/opt/backup-restore")"
-  stack_config_paths="$(ask "STACK_CONFIG_PATHS" "/opt/stacks:/srv/stacks")"
+  stack_config_paths="$(ask "STACK_CONFIG_PATHS" "/opt/stacks:/srv/stacks:/etc/docker/stacks")"
   portainer_url="$(ask "PORTAINER_URL (optional)" "")"
   portainer_username="$(ask "PORTAINER_USERNAME (optional)" "")"
   portainer_password="$(ask_secret "PORTAINER_PASSWORD (optional)")"

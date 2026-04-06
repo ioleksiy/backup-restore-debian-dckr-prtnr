@@ -83,25 +83,51 @@ copy_stack_and_config_files() {
   local stacks_dir="$1"
   local configs_dir="$2"
 
-  if [[ -z "${STACK_CONFIG_PATHS:-}" ]]; then
-    log "INFO" "STACK_CONFIG_PATHS is empty; skipping filesystem stack/config export."
-    return 0
+  local -a configured_paths=()
+  local -a default_paths=(
+    "/opt/stacks"
+    "/srv/stacks"
+    "/etc/docker/stacks"
+    "/opt/portainer/stacks"
+    "/srv/portainer/stacks"
+  )
+  local -a effective_paths=()
+
+  if [[ -n "${STACK_CONFIG_PATHS:-}" ]]; then
+    IFS=':' read -r -a configured_paths <<< "${STACK_CONFIG_PATHS}"
+  else
+    configured_paths=("${default_paths[@]}")
+    log "INFO" "STACK_CONFIG_PATHS is empty; trying Debian-friendly defaults."
   fi
 
   local src
-  IFS=':' read -r -a stack_paths <<< "${STACK_CONFIG_PATHS}"
-  for src in "${stack_paths[@]}"; do
+  for src in "${configured_paths[@]}"; do
     src="${src%/}"
-    if [[ -z "${src}" ]]; then
-      continue
+    [[ -z "${src}" ]] && continue
+    if [[ -d "${src}" ]]; then
+      effective_paths+=("${src}")
     fi
-    if [[ ! -d "${src}" ]]; then
-      log "WARN" "Configured path does not exist: ${src}"
-      continue
-    fi
+  done
 
+  if [[ "${#effective_paths[@]}" -eq 0 && -n "${STACK_CONFIG_PATHS:-}" ]]; then
+    log "WARN" "No configured STACK_CONFIG_PATHS exist; trying Debian-friendly defaults."
+    for src in "${default_paths[@]}"; do
+      if [[ -d "${src}" ]]; then
+        effective_paths+=("${src}")
+      fi
+    done
+  fi
+
+  if [[ "${#effective_paths[@]}" -eq 0 ]]; then
+    log "INFO" "No stack/config source directories found; skipping filesystem export."
+    return 0
+  fi
+
+  for src in "${effective_paths[@]}"; do
     local source_key
     source_key="$(sanitize_filename "${src#/}")"
+
+    log "INFO" "Scanning stack/config files in: ${src}"
 
     while IFS= read -r -d '' file; do
       local rel
@@ -138,15 +164,32 @@ copy_stack_and_config_files() {
 export_portainer_stacks() {
   local portainer_dir="$1"
 
-  if [[ -z "${PORTAINER_URL:-}" || -z "${PORTAINER_USERNAME:-}" || -z "${PORTAINER_PASSWORD:-}" ]]; then
+  local portainer_base_url="${PORTAINER_URL:-}"
+  portainer_base_url="${portainer_base_url%/}"
+
+  if [[ -z "${portainer_base_url}" || -z "${PORTAINER_USERNAME:-}" || -z "${PORTAINER_PASSWORD:-}" ]]; then
     log "INFO" "Portainer API credentials not fully configured; skipping Portainer export."
     return 0
   fi
 
+  # Skip obvious placeholder URLs to avoid unnecessary waits during backup.
+  if [[ "${portainer_base_url}" == *"example.com"* || "${portainer_base_url}" == *"example.invalid"* ]]; then
+    log "INFO" "PORTAINER_URL appears to be a placeholder; skipping Portainer export."
+    return 0
+  fi
+
+  local curl_connect_timeout="${PORTAINER_CONNECT_TIMEOUT:-5}"
+  local curl_max_time="${PORTAINER_MAX_TIME:-20}"
+  local -a curl_opts=(
+    -fsS
+    --connect-timeout "${curl_connect_timeout}"
+    --max-time "${curl_max_time}"
+  )
+
   local auth_response
-  if ! auth_response="$(curl -fsS -X POST -H 'Content-Type: application/json' \
+  if ! auth_response="$(curl "${curl_opts[@]}" -X POST -H 'Content-Type: application/json' \
       -d "{\"Username\":\"${PORTAINER_USERNAME}\",\"Password\":\"${PORTAINER_PASSWORD}\"}" \
-      "${PORTAINER_URL%/}/api/auth")"; then
+      "${portainer_base_url}/api/auth")"; then
     log "WARN" "Portainer authentication failed; skipping Portainer export."
     return 0
   fi
@@ -159,13 +202,13 @@ export_portainer_stacks() {
   fi
 
   local list_url
-  list_url="${PORTAINER_URL%/}/api/stacks"
+  list_url="${portainer_base_url}/api/stacks"
   if [[ -n "${PORTAINER_ENDPOINT_ID:-}" ]]; then
     list_url+="?endpointId=${PORTAINER_ENDPOINT_ID}"
   fi
 
   local stacks_json
-  if ! stacks_json="$(curl -fsS -H "Authorization: Bearer ${jwt}" "${list_url}")"; then
+  if ! stacks_json="$(curl "${curl_opts[@]}" -H "Authorization: Bearer ${jwt}" "${list_url}")"; then
     log "WARN" "Unable to list Portainer stacks; skipping Portainer export."
     return 0
   fi
@@ -193,7 +236,7 @@ export_portainer_stacks() {
       continue
     fi
 
-    if ! stack_file_response="$(curl -fsS -H "Authorization: Bearer ${jwt}" "${PORTAINER_URL%/}/api/stacks/${stack_id}/file")"; then
+    if ! stack_file_response="$(curl "${curl_opts[@]}" -H "Authorization: Bearer ${jwt}" "${portainer_base_url}/api/stacks/${stack_id}/file")"; then
       log "WARN" "Failed to export Portainer stack file for ${stack_name}"
       continue
     fi
