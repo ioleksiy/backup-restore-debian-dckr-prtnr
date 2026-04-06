@@ -58,7 +58,7 @@ Authentication notes:
 - RESTIC_PASSWORD protects repository encryption (restic data key)
 - SFTP/SSH login to Storage Box is separate authentication
 - Recommended for systemd timer: SSH key authentication for root
-- Optional password-based automation is supported with RESTIC_SFTP_PASSWORD (uses sshpass)
+- Optional password-based automation is supported with RESTIC_SFTP_PASSWORD (uses sshpass and restic sftp.command placeholders: %u, %p, %h)
 
 If Portainer uses a self-signed TLS certificate, set PORTAINER_INSECURE_SKIP_VERIFY=true in /etc/backup-restore.env (or install a trusted certificate).
 
