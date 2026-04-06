@@ -1,0 +1,17 @@
+# Runtime and local artifacts
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+
+# Backup workspace output
+backup-output/
+restore-output/
+
+# Local env files (runtime env is managed in /etc/backup-restore.env)
+.env

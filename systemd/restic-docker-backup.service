@@ -1,0 +1,12 @@
+[Unit]
+Description=Restic Docker Swarm Stack Configuration Backup
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/backup-restore.env
+ExecStart=__REPO_ROOT__/scripts/backup.sh
+
+[Install]
+WantedBy=multi-user.target

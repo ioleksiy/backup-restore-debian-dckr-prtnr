@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly Restic Docker Swarm Stack Configuration Backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=5m
+Unit=restic-docker-backup.service
+
+[Install]
+WantedBy=timers.target

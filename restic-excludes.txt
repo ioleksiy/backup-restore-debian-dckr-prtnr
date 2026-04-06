@@ -1,0 +1,8 @@
+# Exclude temporary/cache noise only.
+# Do not add stack exports or metadata paths here.
+
+**/tmp/**
+**/.tmp/**
+**/.cache/**
+**/*.tmp
+**/*~
