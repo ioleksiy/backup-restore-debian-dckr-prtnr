@@ -60,6 +60,8 @@ Authentication notes:
 - Recommended for systemd timer: SSH key authentication for root
 - Optional password-based automation is supported with RESTIC_SFTP_PASSWORD (uses sshpass)
 
+If Portainer uses a self-signed TLS certificate, set PORTAINER_INSECURE_SKIP_VERIFY=true in /etc/backup-restore.env (or install a trusted certificate).
+
 ## Quick Start
 
 1. Clone the repository.

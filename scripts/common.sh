@@ -61,8 +61,21 @@ configure_restic_transport() {
     require_command sshpass
     export SSHPASS="${RESTIC_SFTP_PASSWORD}"
 
+    local wrapper_dir
+    wrapper_dir="${BACKUP_ROOT:-/opt/backup-restore}/runtime"
+    mkdir -p "${wrapper_dir}"
+
+    local sshpass_wrapper
+    sshpass_wrapper="${wrapper_dir}/sshpass-restic-ssh.sh"
+    cat > "${sshpass_wrapper}" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+exec sshpass -e ssh "$@"
+EOF
+    chmod 700 "${sshpass_wrapper}"
+
     if [[ -z "${RESTIC_SFTP_COMMAND:-}" ]]; then
-      RESTIC_SFTP_COMMAND="sshpass -e ssh -o BatchMode=no -o StrictHostKeyChecking=accept-new"
+      RESTIC_SFTP_COMMAND="${sshpass_wrapper} -o BatchMode=no -o StrictHostKeyChecking=accept-new"
     fi
   fi
 }

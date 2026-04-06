@@ -45,6 +45,9 @@ main() {
   local portainer_username
   local portainer_password
   local portainer_endpoint_id
+  local portainer_insecure_skip_verify
+  local portainer_connect_timeout
+  local portainer_max_time
   local restic_forget_args
   local restic_sftp_password
   local restic_sftp_command
@@ -70,6 +73,9 @@ main() {
   portainer_username="$(ask "PORTAINER_USERNAME (optional)" "")"
   portainer_password="$(ask_secret "PORTAINER_PASSWORD (optional)")"
   portainer_endpoint_id="$(ask "PORTAINER_ENDPOINT_ID (optional)" "1")"
+  portainer_insecure_skip_verify="$(ask "PORTAINER_INSECURE_SKIP_VERIFY (optional true/false)" "false")"
+  portainer_connect_timeout="$(ask "PORTAINER_CONNECT_TIMEOUT (seconds)" "5")"
+  portainer_max_time="$(ask "PORTAINER_MAX_TIME (seconds)" "20")"
   restic_forget_args="$(ask "RESTIC_FORGET_ARGS" "--keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune")"
   restic_sftp_password="$(ask_secret "RESTIC_SFTP_PASSWORD (optional, for SFTP password auth)")"
   restic_sftp_command="$(ask "RESTIC_SFTP_COMMAND (optional custom restic sftp.command)" "")"
@@ -93,6 +99,9 @@ PORTAINER_URL='$(sq_escape "${portainer_url}")'
 PORTAINER_USERNAME='$(sq_escape "${portainer_username}")'
 PORTAINER_PASSWORD='$(sq_escape "${portainer_password}")'
 PORTAINER_ENDPOINT_ID='$(sq_escape "${portainer_endpoint_id}")'
+PORTAINER_INSECURE_SKIP_VERIFY='$(sq_escape "${portainer_insecure_skip_verify}")'
+PORTAINER_CONNECT_TIMEOUT='$(sq_escape "${portainer_connect_timeout}")'
+PORTAINER_MAX_TIME='$(sq_escape "${portainer_max_time}")'
 RESTIC_FORGET_ARGS='$(sq_escape "${restic_forget_args}")'
 RESTIC_SFTP_PASSWORD='$(sq_escape "${restic_sftp_password}")'
 RESTIC_SFTP_COMMAND='$(sq_escape "${restic_sftp_command}")'

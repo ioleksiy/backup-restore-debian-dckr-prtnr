@@ -186,6 +186,13 @@ export_portainer_stacks() {
     --max-time "${curl_max_time}"
   )
 
+  case "${PORTAINER_INSECURE_SKIP_VERIFY:-false}" in
+    1|true|TRUE|yes|YES)
+      curl_opts+=( -k )
+      log "WARN" "PORTAINER_INSECURE_SKIP_VERIFY is enabled; TLS certificate verification is disabled."
+      ;;
+  esac
+
   local auth_response
   if ! auth_response="$(curl "${curl_opts[@]}" -X POST -H 'Content-Type: application/json' \
       -d "{\"Username\":\"${PORTAINER_USERNAME}\",\"Password\":\"${PORTAINER_PASSWORD}\"}" \
