@@ -38,6 +38,7 @@ collect_docker_metadata() {
   ensure_dir "${meta_dir}/network-inspect"
   ensure_dir "${meta_dir}/config-inspect"
   ensure_dir "${meta_dir}/secret-inspect"
+  ensure_dir "${meta_dir}/volume-inspect"
 
   collect_command "${meta_dir}/docker-info.txt" docker info || true
   collect_command "${meta_dir}/docker-version.txt" docker version || true
@@ -47,6 +48,7 @@ collect_docker_metadata() {
   collect_command "${meta_dir}/docker-network-ls.txt" docker network ls || true
   collect_command "${meta_dir}/docker-secret-ls.txt" docker secret ls || true
   collect_command "${meta_dir}/docker-config-ls.txt" docker config ls || true
+  collect_command "${meta_dir}/docker-volume-ls.txt" docker volume ls || true
 
   local stack
   while IFS= read -r stack; do
@@ -77,6 +79,90 @@ collect_docker_metadata() {
     [[ -z "${secret}" ]] && continue
     collect_command "${meta_dir}/secret-inspect/$(sanitize_filename "${secret}").json" docker secret inspect "${secret}" || true
   done < <(docker secret ls --format '{{.Name}}' 2>/dev/null || true)
+
+  local volume
+  while IFS= read -r volume; do
+    [[ -z "${volume}" ]] && continue
+    collect_command "${meta_dir}/volume-inspect/$(sanitize_filename "${volume}").json" docker volume inspect "${volume}" || true
+  done < <(docker volume ls --format '{{.Name}}' 2>/dev/null || true)
+}
+
+collect_volume_mount_paths() {
+  local meta_dir="$1"
+  local paths_file="$2"
+  local read_only_check="${VOLUME_READONLY_CHECK:-true}"
+
+  case "${BACKUP_DOCKER_VOLUMES:-true}" in
+    0|false|FALSE|no|NO)
+      log "INFO" "BACKUP_DOCKER_VOLUMES is disabled; skipping Docker volume backup."
+      : > "${paths_file}"
+      return 0
+      ;;
+  esac
+
+  local -a volumes=()
+  mapfile -t volumes < <(docker volume ls --format '{{.Name}}' 2>/dev/null || true)
+
+  : > "${paths_file}"
+  local metadata_file="${meta_dir}/volume-mountpoints.tsv"
+  : > "${metadata_file}"
+
+  if [[ "${#volumes[@]}" -eq 0 ]]; then
+    log "INFO" "No Docker volumes found; skipping volume backup step."
+    return 0
+  fi
+
+  local volume
+  local included_count=0
+  local skipped_count=0
+  local failed_count=0
+
+  for volume in "${volumes[@]}"; do
+    [[ -z "${volume}" ]] && continue
+
+    if [[ -n "${VOLUME_EXCLUDE_REGEX:-}" ]]; then
+      if printf '%s' "${volume}" | grep -Eq "${VOLUME_EXCLUDE_REGEX}"; then
+        log "INFO" "Skipping volume by VOLUME_EXCLUDE_REGEX: ${volume}"
+        skipped_count=$((skipped_count + 1))
+        continue
+      fi
+    fi
+
+    local mountpoint
+    mountpoint="$(docker volume inspect "${volume}" 2>/dev/null | jq -r '.[0].Mountpoint // empty' || true)"
+
+    if [[ -z "${mountpoint}" ]]; then
+      log "WARN" "Volume has no mountpoint (skipped): ${volume}"
+      skipped_count=$((skipped_count + 1))
+      continue
+    fi
+
+    if [[ ! -d "${mountpoint}" ]]; then
+      log "WARN" "Volume mountpoint does not exist on host (skipped): ${volume} -> ${mountpoint}"
+      skipped_count=$((skipped_count + 1))
+      continue
+    fi
+
+    case "${read_only_check}" in
+      1|true|TRUE|yes|YES)
+        if ! docker run --rm -v "${volume}:/volume:ro" busybox sh -c 'ls -la /volume >/dev/null'; then
+          log "WARN" "Read-only check failed for volume: ${volume}"
+          failed_count=$((failed_count + 1))
+          continue
+        fi
+        ;;
+    esac
+
+    printf '%s\t%s\n' "${volume}" "${mountpoint}" >> "${metadata_file}"
+    printf '%s\n' "${mountpoint}" >> "${paths_file}"
+    included_count=$((included_count + 1))
+  done
+
+  log "INFO" "Docker volume path summary: included=${included_count}, skipped=${skipped_count}, failed=${failed_count}"
+
+  if [[ "${failed_count}" -gt 0 ]]; then
+    fail "One or more Docker volumes failed read-only validation."
+  fi
 }
 
 copy_stack_and_config_files() {
@@ -288,6 +374,7 @@ main() {
   local stacks_dir="${WORKSPACE}/stacks"
   local portainer_dir="${WORKSPACE}/portainer"
   local configs_dir="${WORKSPACE}/configs"
+  local volume_paths_file="${meta_dir}/volume-mountpaths.list"
 
   ensure_dir "${meta_dir}"
   ensure_dir "${stacks_dir}"
@@ -310,6 +397,9 @@ main() {
   log "INFO" "Collecting Portainer stack exports when API settings are available."
   export_portainer_stacks "${portainer_dir}"
 
+  log "INFO" "Collecting Docker volume mount paths for direct restic backup."
+  collect_volume_mount_paths "${meta_dir}" "${volume_paths_file}"
+
   log "INFO" "Ensuring restic repository is initialized."
   ensure_restic_repository
 
@@ -320,14 +410,23 @@ main() {
   fi
 
   log "INFO" "Running restic backup upload."
+  local -a backup_paths=("${meta_dir}" "${stacks_dir}" "${portainer_dir}" "${configs_dir}")
+  local -a volume_paths=()
+  if [[ -s "${volume_paths_file}" ]]; then
+    mapfile -t volume_paths < "${volume_paths_file}"
+    backup_paths+=("${volume_paths[@]}")
+    log "INFO" "Adding ${#volume_paths[@]} Docker volume mount paths to restic backup."
+  fi
+
   run_restic backup \
     --exclude-file "${excludes_file}" \
     --host "${backup_host}" \
     --tag docker \
     --tag swarm \
     --tag stacks \
+    --tag volumes \
     --tag nightly \
-    "${meta_dir}" "${stacks_dir}" "${portainer_dir}" "${configs_dir}"
+    "${backup_paths[@]}"
 
   log "INFO" "Applying retention policy with restic forget."
   local forget_args

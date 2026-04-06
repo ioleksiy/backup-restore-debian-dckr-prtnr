@@ -57,6 +57,9 @@ main() {
   local restore_target
   local restic_snapshot
   local restic_host
+  local backup_docker_volumes
+  local volume_readonly_check
+  local volume_exclude_regex
 
   restic_repository="$(ask "RESTIC_REPOSITORY" "")"
   if [[ -z "${restic_repository}" ]]; then
@@ -86,6 +89,9 @@ main() {
   restore_target="$(ask "RESTORE_TARGET" "/restore-output")"
   restic_snapshot="$(ask "RESTIC_SNAPSHOT" "latest")"
   restic_host="$(ask "RESTIC_HOST (optional)" "")"
+  backup_docker_volumes="$(ask "BACKUP_DOCKER_VOLUMES (true/false)" "true")"
+  volume_readonly_check="$(ask "VOLUME_READONLY_CHECK (true/false)" "true")"
+  volume_exclude_regex="$(ask "VOLUME_EXCLUDE_REGEX (optional)" "")"
 
   install -m 600 /dev/null /etc/backup-restore.env
 
@@ -113,6 +119,9 @@ SLACK_NOTIFY_CHANNEL='$(sq_escape "${slack_notify_channel}")'
 RESTORE_TARGET='$(sq_escape "${restore_target}")'
 RESTIC_SNAPSHOT='$(sq_escape "${restic_snapshot}")'
 RESTIC_HOST='$(sq_escape "${restic_host}")'
+BACKUP_DOCKER_VOLUMES='$(sq_escape "${backup_docker_volumes}")'
+VOLUME_READONLY_CHECK='$(sq_escape "${volume_readonly_check}")'
+VOLUME_EXCLUDE_REGEX='$(sq_escape "${volume_exclude_regex}")'
 EOF
 
   chmod 600 /etc/backup-restore.env

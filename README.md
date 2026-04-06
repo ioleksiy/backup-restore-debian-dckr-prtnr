@@ -2,7 +2,7 @@
 
 Configuration-focused backup and restore tooling for Debian hosts running Docker Swarm and Portainer stacks.
 
-This project backs up stack deployment definitions and recovery metadata, not application data volumes.
+This project backs up stack deployment definitions, recovery metadata, and Docker volumes.
 
 ## What This Backs Up
 
@@ -12,16 +12,16 @@ Configuration-only scope:
 - Stack definition files discovered in configured filesystem paths
 - Portainer stack definitions exported through the Portainer API (when configured)
 - Optional bind-mounted configuration files from explicitly configured paths
+- Docker named volumes, backed up directly from their Docker mount paths
 
 ## What This Does Not Back Up
 
-This project does not back up runtime application data.
-
-- No generic Docker volume backup
-- No full database dumps
 - No archive of /var/lib/docker
+- No direct logical export per database engine (unless your app already stores dumps in volumes/files)
 
 Service inspect and metadata output are recovery references, not a replacement for original compose files.
+
+Docker volumes are backed up as regular filesystem content from their mount paths, not as block-level snapshots.
 
 ## Prerequisites
 
@@ -148,6 +148,18 @@ Patterns include:
 - compose*.yml / compose*.yaml
 - .env / .env.*
 - *.conf / *.cfg / *.yaml / *.yml
+
+## Docker Volume Backup
+
+The backup script enumerates Docker volume mount paths and passes them directly to `restic backup` with the `volumes` tag.
+
+This avoids creating intermediate tar/gz archives.
+
+Controls:
+
+- `BACKUP_DOCKER_VOLUMES=true|false` (default true)
+- `VOLUME_READONLY_CHECK=true|false` (default true)
+- `VOLUME_EXCLUDE_REGEX` optional regex to skip selected volume names
 
 ## Schedule Install/Uninstall
 
