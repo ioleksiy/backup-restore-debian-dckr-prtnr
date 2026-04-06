@@ -17,6 +17,7 @@ main() {
   require_root
   require_command restic
   load_env_file
+  configure_restic_transport
   require_env RESTIC_REPOSITORY RESTIC_PASSWORD
 
   local read_data_subset=""
@@ -45,17 +46,17 @@ main() {
 
   if [[ "${should_unlock}" == "true" ]]; then
     log "INFO" "Running restic unlock as explicitly requested."
-    restic unlock
+    run_restic unlock
   fi
 
   log "INFO" "Listing snapshots."
-  restic snapshots
+  run_restic snapshots
 
   log "INFO" "Running restic check."
   if [[ -n "${read_data_subset}" ]]; then
-    restic check --read-data-subset="${read_data_subset}"
+    run_restic check --read-data-subset="${read_data_subset}"
   else
-    restic check
+    run_restic check
   fi
 
   log "INFO" "restic check completed successfully."

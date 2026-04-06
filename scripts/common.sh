@@ -56,6 +56,26 @@ ensure_dir() {
   mkdir -p "${dir}"
 }
 
+configure_restic_transport() {
+  if [[ -n "${RESTIC_SFTP_PASSWORD:-}" ]]; then
+    require_command sshpass
+    export SSHPASS="${RESTIC_SFTP_PASSWORD}"
+
+    if [[ -z "${RESTIC_SFTP_COMMAND:-}" ]]; then
+      RESTIC_SFTP_COMMAND="sshpass -e ssh -o BatchMode=no -o StrictHostKeyChecking=accept-new"
+    fi
+  fi
+}
+
+run_restic() {
+  local -a opts=()
+  if [[ -n "${RESTIC_SFTP_COMMAND:-}" ]]; then
+    opts+=( -o "sftp.command=${RESTIC_SFTP_COMMAND}" )
+  fi
+
+  restic "${opts[@]}" "$@"
+}
+
 sanitize_filename() {
   local name="$1"
   name="${name// /_}"

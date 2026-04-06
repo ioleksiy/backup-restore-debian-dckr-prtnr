@@ -255,11 +255,11 @@ export_portainer_stacks() {
 }
 
 ensure_restic_repository() {
-  if restic cat config >/dev/null 2>&1; then
+  if run_restic cat config >/dev/null 2>&1; then
     log "INFO" "Restic repository already initialized."
   else
     log "INFO" "Initializing restic repository."
-    restic init
+    run_restic init
   fi
 }
 
@@ -267,6 +267,7 @@ main() {
   require_root
   require_command docker restic curl jq find cp hostname
   load_env_file
+  configure_restic_transport
   require_env RESTIC_REPOSITORY RESTIC_PASSWORD BACKUP_ROOT RESTIC_FORGET_ARGS
 
   local backup_root
@@ -312,7 +313,7 @@ main() {
   fi
 
   log "INFO" "Running restic backup upload."
-  restic backup \
+  run_restic backup \
     --exclude-file "${excludes_file}" \
     --host "${backup_host}" \
     --tag docker \
@@ -338,7 +339,7 @@ main() {
     forget_args+=(--prune)
   fi
 
-  restic forget "${forget_args[@]}"
+  run_restic forget "${forget_args[@]}"
 
   log "INFO" "Backup completed successfully."
   notify_slack "OK" "backup" "Backup completed successfully"

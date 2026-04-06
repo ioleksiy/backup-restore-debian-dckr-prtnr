@@ -46,6 +46,8 @@ main() {
   local portainer_password
   local portainer_endpoint_id
   local restic_forget_args
+  local restic_sftp_password
+  local restic_sftp_command
   local slack_webhook_url
   local slack_notify_channel
   local restore_target
@@ -64,11 +66,13 @@ main() {
 
   backup_root="$(ask "BACKUP_ROOT" "/opt/backup-restore")"
   stack_config_paths="$(ask "STACK_CONFIG_PATHS" "/opt/stacks:/srv/stacks:/etc/docker/stacks")"
-  portainer_url="$(ask "PORTAINER_URL (optional)" "")"
+  portainer_url="$(ask "PORTAINER_URL (optional)" "http://127.0.0.1:9000")"
   portainer_username="$(ask "PORTAINER_USERNAME (optional)" "")"
   portainer_password="$(ask_secret "PORTAINER_PASSWORD (optional)")"
-  portainer_endpoint_id="$(ask "PORTAINER_ENDPOINT_ID (optional)" "")"
+  portainer_endpoint_id="$(ask "PORTAINER_ENDPOINT_ID (optional)" "1")"
   restic_forget_args="$(ask "RESTIC_FORGET_ARGS" "--keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune")"
+  restic_sftp_password="$(ask_secret "RESTIC_SFTP_PASSWORD (optional, for SFTP password auth)")"
+  restic_sftp_command="$(ask "RESTIC_SFTP_COMMAND (optional custom restic sftp.command)" "")"
   slack_webhook_url="$(ask "SLACK_WEBHOOK_URL (optional)" "")"
   slack_notify_channel="$(ask "SLACK_NOTIFY_CHANNEL (optional)" "")"
   restore_target="$(ask "RESTORE_TARGET" "/restore-output")"
@@ -90,6 +94,8 @@ PORTAINER_USERNAME='$(sq_escape "${portainer_username}")'
 PORTAINER_PASSWORD='$(sq_escape "${portainer_password}")'
 PORTAINER_ENDPOINT_ID='$(sq_escape "${portainer_endpoint_id}")'
 RESTIC_FORGET_ARGS='$(sq_escape "${restic_forget_args}")'
+RESTIC_SFTP_PASSWORD='$(sq_escape "${restic_sftp_password}")'
+RESTIC_SFTP_COMMAND='$(sq_escape "${restic_sftp_command}")'
 SLACK_WEBHOOK_URL='$(sq_escape "${slack_webhook_url}")'
 SLACK_NOTIFY_CHANNEL='$(sq_escape "${slack_notify_channel}")'
 RESTORE_TARGET='$(sq_escape "${restore_target}")'

@@ -16,6 +16,7 @@ main() {
   require_root
   require_command restic
   load_env_file
+  configure_restic_transport
   require_env RESTIC_REPOSITORY RESTIC_PASSWORD
 
   local snapshot
@@ -33,7 +34,7 @@ main() {
   log "WARN" "This operation can overwrite files in the target directory."
 
   log "INFO" "Available snapshots:"
-  restic snapshots
+  run_restic snapshots
 
   printf 'Type RESTORE to continue: '
   local confirm
@@ -43,7 +44,7 @@ main() {
   fi
 
   ensure_dir "${target}"
-  restic restore "${snapshot}" --target "${target}"
+  run_restic restore "${snapshot}" --target "${target}"
 
   log "INFO" "Restore completed successfully."
   notify_slack "OK" "restore" "Restore completed successfully"

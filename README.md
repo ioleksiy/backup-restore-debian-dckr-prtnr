@@ -32,12 +32,15 @@ Service inspect and metadata output are recovery references, not a replacement f
 - curl
 - jq
 - systemd
+- sshpass (optional, only for non-interactive SSH password auth)
 
 Install dependencies on Debian:
 
 ~~~bash
 sudo apt update
 sudo apt install -y restic docker.io curl jq ca-certificates
+# Optional for password-based SFTP auth in automation:
+sudo apt install -y sshpass
 ~~~
 
 ## Hetzner Storage Box Example (restic SFTP)
@@ -49,6 +52,13 @@ sftp:u123456-sub1@u123456-sub1.your-storagebox.de:/./restic-repo
 ~~~
 
 Set that as RESTIC_REPOSITORY in the setup script.
+
+Authentication notes:
+
+- RESTIC_PASSWORD protects repository encryption (restic data key)
+- SFTP/SSH login to Storage Box is separate authentication
+- Recommended for systemd timer: SSH key authentication for root
+- Optional password-based automation is supported with RESTIC_SFTP_PASSWORD (uses sshpass)
 
 ## Quick Start
 
