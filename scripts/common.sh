@@ -62,7 +62,27 @@ configure_restic_transport() {
     export SSHPASS="${RESTIC_SFTP_PASSWORD}"
 
     if [[ -z "${RESTIC_SFTP_COMMAND:-}" ]]; then
-      RESTIC_SFTP_COMMAND="sshpass -e ssh -o BatchMode=no -o StrictHostKeyChecking=accept-new -l %u -p %p %h -s sftp"
+      if [[ "${RESTIC_REPOSITORY:-}" != sftp:* ]]; then
+        fail "RESTIC_SFTP_PASSWORD is set but RESTIC_REPOSITORY is not an sftp: repository."
+      fi
+
+      local repo_without_scheme
+      repo_without_scheme="${RESTIC_REPOSITORY#sftp:}"
+      local user_host_part
+      user_host_part="${repo_without_scheme%%:*}"
+
+      if [[ "${user_host_part}" != *"@"* ]]; then
+        fail "Cannot derive SFTP user/host from RESTIC_REPOSITORY. Expected format: sftp:user@host:/path"
+      fi
+
+      local sftp_user
+      local sftp_host
+      local sftp_port
+      sftp_user="${user_host_part%@*}"
+      sftp_host="${user_host_part#*@}"
+      sftp_port="${RESTIC_SFTP_PORT:-22}"
+
+      RESTIC_SFTP_COMMAND="sshpass -e ssh -o BatchMode=no -o StrictHostKeyChecking=accept-new -l ${sftp_user} -p ${sftp_port} ${sftp_host} -s sftp"
     fi
   fi
 }

@@ -50,6 +50,7 @@ main() {
   local portainer_max_time
   local restic_forget_args
   local restic_sftp_password
+  local restic_sftp_port
   local restic_sftp_command
   local slack_webhook_url
   local slack_notify_channel
@@ -78,6 +79,7 @@ main() {
   portainer_max_time="$(ask "PORTAINER_MAX_TIME (seconds)" "20")"
   restic_forget_args="$(ask "RESTIC_FORGET_ARGS" "--keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune")"
   restic_sftp_password="$(ask_secret "RESTIC_SFTP_PASSWORD (optional, for SFTP password auth)")"
+  restic_sftp_port="$(ask "RESTIC_SFTP_PORT (optional, default 22)" "22")"
   restic_sftp_command="$(ask "RESTIC_SFTP_COMMAND (optional custom restic sftp.command)" "")"
   slack_webhook_url="$(ask "SLACK_WEBHOOK_URL (optional)" "")"
   slack_notify_channel="$(ask "SLACK_NOTIFY_CHANNEL (optional)" "")"
@@ -104,6 +106,7 @@ PORTAINER_CONNECT_TIMEOUT='$(sq_escape "${portainer_connect_timeout}")'
 PORTAINER_MAX_TIME='$(sq_escape "${portainer_max_time}")'
 RESTIC_FORGET_ARGS='$(sq_escape "${restic_forget_args}")'
 RESTIC_SFTP_PASSWORD='$(sq_escape "${restic_sftp_password}")'
+RESTIC_SFTP_PORT='$(sq_escape "${restic_sftp_port}")'
 RESTIC_SFTP_COMMAND='$(sq_escape "${restic_sftp_command}")'
 SLACK_WEBHOOK_URL='$(sq_escape "${slack_webhook_url}")'
 SLACK_NOTIFY_CHANNEL='$(sq_escape "${slack_notify_channel}")'
